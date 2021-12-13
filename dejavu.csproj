@@ -2,12 +2,13 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
     <UserSecretsId>31051026529000467138</UserSecretsId>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Castle.Windsor" Version="5.1.1"/>
-    <PackageReference Include="Castle.LoggingFacility" Version="5.1.1"/>
-    <PackageReference Include="Castle.Windsor.MsDependencyInjection" Version="3.4.0"/>
-    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2"/>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
+    <PackageReference Include="Castle.Windsor" Version="5.1.1" />
+    <PackageReference Include="Castle.LoggingFacility" Version="5.1.1" />
+    <PackageReference Include="Castle.Windsor.MsDependencyInjection" Version="3.4.0" />
+    <PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 </Project>
