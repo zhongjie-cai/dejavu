@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Castle.Core;
+using Castle.DynamicProxy;
 using Castle.MicroKernel;
 using Castle.MicroKernel.ModelBuilder;
+using Castle.MicroKernel.Registration;
+using Castle.Windsor;
 
 namespace Dejavu
 {
@@ -12,19 +14,41 @@ namespace Dejavu
     /// </summary>
     public class InterceptorConfiguration : IContributeComponentModelConstruction
     {
-        private readonly IDictionary<string, bool> m_interceptingTypes;
+        private readonly IDictionary<string, bool> m_interceptingTypes = new Dictionary<string, bool>();
 
-        public InterceptorConfiguration()
+        internal InterceptorConfiguration(IEnumerable<Type> interceptingTypes)
         {
-            m_interceptingTypes = null;
+            foreach (var interceptingType in interceptingTypes)
+            {
+                m_interceptingTypes[interceptingType.AssemblyQualifiedName] = true;
+            }
         }
 
-        public InterceptorConfiguration(IEnumerable<Type> interceptingTypes)
+        /// <summary>
+        /// This method configures the given container, registering with interceptors, context provider and object serializer as given
+        /// </summary>
+        /// <typeparam name="TContextProvider">The implementation of <see cref="IProvideContext"/></typeparam>
+        /// <typeparam name="TObjectSerializer">The implementation of <see cref="ISerializeObject"/></typeparam>
+        /// <param name="container">The Windsor.Castle container to be configured</param>
+        /// <param name="interceptingTypes">A list of types to be intercepted for record and replay; if nothing is provided, then all types are intercepted</param>
+        public static IWindsorContainer ConfigureFor<TContextProvider, TObjectSerializer>(
+            IWindsorContainer container,
+            params Type[] interceptingTypes
+        )
+            where TContextProvider : IProvideContext
+            where TObjectSerializer : ISerializeObject
         {
-            m_interceptingTypes = interceptingTypes.ToDictionary<Type, string, bool>(
-                type => type.AssemblyQualifiedName,
-                value => true
+            container.Register(Component.For<IInterceptor>().ImplementedBy<RecordInterceptor>().LifestyleSingleton());
+            container.Register(Component.For<IInterceptor>().ImplementedBy<ReplayInterceptor>().LifestyleSingleton());
+            container.Register(Component.For<IProvideContext>().ImplementedBy<TContextProvider>().LifestyleSingleton());
+            container.Register(Component.For<ISerializeObject>().ImplementedBy<TObjectSerializer>().LifestyleSingleton());
+            var contributor = new InterceptorConfiguration(
+                interceptingTypes
             );
+            container.Kernel.ComponentModelBuilder.AddContributor(
+                contributor
+            );
+            return container;
         }
 
         /// <summary>
@@ -34,7 +58,7 @@ namespace Dejavu
         {
             foreach (var service in model.Services)
             {
-                var matches = m_interceptingTypes == null
+                var matches = m_interceptingTypes.Count == 0
                     ? true
                     : m_interceptingTypes.ContainsKey(service.AssemblyQualifiedName);
                 if (matches)
