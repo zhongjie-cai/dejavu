@@ -26,4 +26,4 @@ where `IDoSomething` and its following `...` (params) are the array of the antic
 
 # Examples
 
-TBA
+[Examples](https://github.com/zhongjie-cai/dejavu.examples)
