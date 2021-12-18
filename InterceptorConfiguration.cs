@@ -6,6 +6,7 @@ using Castle.MicroKernel;
 using Castle.MicroKernel.ModelBuilder;
 using Castle.MicroKernel.Registration;
 using Castle.Windsor;
+using Microsoft.Extensions.Logging;
 
 namespace Dejavu
 {
@@ -58,16 +59,31 @@ namespace Dejavu
         {
             foreach (var service in model.Services)
             {
-                var matches = m_interceptingTypes.Count == 0
-                    ? true
-                    : m_interceptingTypes.ContainsKey(service.AssemblyQualifiedName);
-                if (matches)
+                if (!ShouldIntercept(service, m_interceptingTypes))
                 {
-                    model.Interceptors.Add(InterceptorReference.ForType<RecordInterceptor>());
-                    model.Interceptors.Add(InterceptorReference.ForType<ReplayInterceptor>());
-                    return;
+                    continue;
                 }
+                model.Interceptors.Add(InterceptorReference.ForType<RecordInterceptor>());
+                model.Interceptors.Add(InterceptorReference.ForType<ReplayInterceptor>());
+                return;
             }
+        }
+
+        private static bool ShouldIntercept(Type service, IDictionary<string, bool> interceptingTypes)
+        {
+            if (interceptingTypes.Count > 0)
+            {
+                return interceptingTypes.ContainsKey(service.AssemblyQualifiedName);
+            }
+            if (service.Namespace == typeof(InterceptorConfiguration).Namespace)
+            {
+                return false;
+            }
+            if (service.AssemblyQualifiedName == typeof(ILogger).AssemblyQualifiedName)
+            {
+                return false;
+            }
+            return true;
         }
     }
 }
