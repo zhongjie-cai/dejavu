@@ -14,15 +14,15 @@ The library can be easily configured using the following syntax:
 InterceptorConfiguration.ConfigureFor<HttpContextProvider, JsonObjectSerializer>(container);
 ```
 
-where `container` is the instance of your created Windsor.Castle IoC container.
+where `container` is the instance of your created Windsor.Castle IoC container. This way, all (and only) types of the assembly calling this method are recorded / replayed automatically.
 
-If only a particular list of types should be recorded/replayed, then the following syntax can be used:
+If only a particular list of assemblies or types should be recorded / replayed, then the following syntax can be used:
 
 ```C#
-InterceptorConfiguration.ConfigureFor<HttpContextProvider, JsonObjectSerializer>(container, typeof(IDoSomething), ...);
+InterceptorConfiguration.ConfigureFor<HttpContextProvider, JsonObjectSerializer>(container, interceptingAssemblies, interceptingTypes);
 ```
 
-where `IDoSomething` and its following `...` (params) are the array of the anticipated types.
+where all the types defined in every assembly from the `interceptingAssemblies`, and/or all the mentioned types from the `interceptingTypes`, would be recorded / replayed.
 
 # Examples
 
