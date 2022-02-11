@@ -78,6 +78,38 @@ namespace Dejavu
         }
 
         /// <summary>
+        /// This method configures the given container, registering with interceptors, context provider and object serializer as given
+        /// </summary>
+        /// <param name="container">The Windsor.Castle container to be configured</param>
+        /// <param name="contextProvider">An instance of IProvideContext implementation to be registered</param>
+        /// <param name="objectSerializer">An instance of ISerializeObject implementation to be registered</param>
+        /// <param name="interceptingAssemblies">A list of assemblies to be intercepted for record and replay</param>
+        /// <param name="interceptingTypes">A list of types to be intercepted for record and replay</param>
+        public static IWindsorContainer ConfigureFor(
+            IWindsorContainer container,
+            IProvideContext contextProvider,
+            ISerializeObject objectSerializer,
+            IEnumerable<Assembly> interceptingAssemblies = null,
+            IEnumerable<Type> interceptingTypes = null
+        )
+        {
+            container.Register(Component.For<IInterceptor>().ImplementedBy<RecordInterceptor>().LifestyleSingleton());
+            container.Register(Component.For<IInterceptor>().ImplementedBy<ReplayInterceptor>().LifestyleSingleton());
+            container.Register(Component.For<IProvideContext>().Instance(contextProvider).LifestyleSingleton());
+            container.Register(Component.For<ISerializeObject>().Instance(objectSerializer).LifestyleSingleton());
+            var callingAssembly = Assembly.GetCallingAssembly();
+            var contributor = new InterceptorConfiguration(
+                callingAssembly,
+                interceptingAssemblies,
+                interceptingTypes
+            );
+            container.Kernel.ComponentModelBuilder.AddContributor(
+                contributor
+            );
+            return container;
+        }
+
+        /// <summary>
         /// Processes the component model during DI instantiation to inject interceptors according to registrations
         /// </summary>
         public void ProcessModel(IKernel kernel, ComponentModel model)
