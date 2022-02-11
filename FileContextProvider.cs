@@ -13,10 +13,8 @@ namespace Dejavu
         private const string CONTEXT_TYPE_RECORDING = "r";
         private const string CONTEXT_TYPE_REPLAYING = "p";
 
-        private StreamWriter m_streamWriter;
-        private IDictionary<int, Queue<ContextEntry>> m_contextEntryCache;
         private static object ms_writeLock = new object();
-
+        private static IDictionary<string, int> ms_entryIndex = new Dictionary<string, int>();
 
         private readonly IConfiguration m_configuration;
         private readonly ISerializeObject m_objectSerializer;
@@ -82,59 +80,52 @@ namespace Dejavu
 
         public string GetRecordID()
         {
-            var fileName = GetContextFile(CONTEXT_TYPE_RECORDING);
-            if (!string.IsNullOrEmpty(fileName) &&
-                m_streamWriter == null)
-            {
-                m_streamWriter = new StreamWriter(fileName);
-            }
-            return fileName;
+            return GetContextFile(CONTEXT_TYPE_RECORDING);
         }
         
         public string GetReplayID()
         {
-            var fileName = GetContextFile(CONTEXT_TYPE_REPLAYING);
-            if (!string.IsNullOrEmpty(fileName) &&
-                m_contextEntryCache == null)
+            return GetContextFile(CONTEXT_TYPE_REPLAYING);
+        }
+
+        private static string GetNextEntryFileName(string contextID, int threadIndex)
+        {
+            lock (ms_writeLock)
             {
-                m_contextEntryCache = LoadContextEntryFromFile(fileName);
+                var filePrefix = $"{contextID}_{threadIndex}";
+                if (!ms_entryIndex.TryGetValue(filePrefix, out int entryIndex))
+                {
+                    entryIndex = 0;
+                }
+                var fileName = $"{filePrefix}_{entryIndex}";
+                ms_entryIndex[filePrefix] = entryIndex + 1;
+                return fileName;
             }
-            return fileName;
         }
         
         public void InsertEntry(string contextID, int threadIndex, ContextEntry contextEntry)
         {
-            if (m_streamWriter == null)
-            {
-                return;
-            }
             var entryContent = m_objectSerializer.Serialize(contextEntry);
-            lock (ms_writeLock)
+            var fileName = GetNextEntryFileName(contextID, threadIndex);
+            using (var streamWriter = new StreamWriter(fileName))
             {
-                m_streamWriter.WriteLine(threadIndex);
-                m_streamWriter.WriteLine(entryContent);
-                m_streamWriter.Flush();
+                streamWriter.WriteLine(entryContent);
+                streamWriter.Flush();
             }
         }
 
         public ContextEntry GetNextEntry(string contextID, int threadIndex)
         {
-            if (m_contextEntryCache == null)
+            var fileName = GetNextEntryFileName(contextID, threadIndex);
+            using (var streamReader = new StreamReader(fileName))
             {
-                return null;
+                var entryContent = streamReader.ReadToEnd();
+                var contextEntry = m_objectSerializer.Deserialize(
+                    entryContent,
+                    typeof(ContextEntry)
+                );
+                return (ContextEntry)contextEntry;
             }
-            if (!m_contextEntryCache.TryGetValue(
-                threadIndex,
-                out Queue<ContextEntry> contextEntryQueue
-            ))
-            {
-                return null;
-            }
-            if (contextEntryQueue.Count == 0)
-            {
-                return null;
-            }
-            return contextEntryQueue.Dequeue();
         }
     }
 }

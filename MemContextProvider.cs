@@ -16,7 +16,6 @@ namespace Dejavu
         private string m_recordID;
         private string m_replayID;
 
-
         private readonly ISerializeObject m_objectSerializer;
 
         public MemContextProvider(
